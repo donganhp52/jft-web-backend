@@ -4,8 +4,8 @@ import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { generateRefreshToken } from './utils/refresh-token.util';
-import { RefreshToken } from '@prisma/client';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { LogoutDto } from './dto/logout.dto';
 
 @Injectable()
 export class AuthService {
@@ -119,5 +119,17 @@ export class AuthService {
     });
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+  }
+
+  async logout(logoutDto: LogoutDto) {
+    const { refreshToken } = logoutDto;
+
+    await this.prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
+    return {
+      success: true,
+      message: 'Logged out successfully',
+    };
   }
 }
