@@ -15,41 +15,79 @@ generator client {
 
 enum UserRole {
   USER
+  EDITOR
   ADMIN
 }
 
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ExamSessionStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
 model User {
-  id String @id @default(uuid())
-  email String @unique
+  id       String   @id @default(uuid())
+  email    String   @unique
   password String
-  role UserRole @default(USER)
+  role     UserRole @default(USER)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   refreshToken RefreshToken[]
+  exams        Exam[]         @relation("UserExams")
+  examSessions ExamSession[]
 }
 
 model RefreshToken {
-  id String @id @default(uuid())
+  id    String @id @default(uuid())
   token String @unique
 
   userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model RefreshToken {
-  id String @id @default(uuid())
-  token String @unique
-
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expiresAt DateTime
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model Exam {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+  timeLimit   Int // in minutes
+
+  status ExamStatus @default(DRAFT)
+
+  createdBy String
+  creator   User   @relation("UserExams", fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions ExamSession[]
+}
+
+model ExamSession {
+  id String @id @default(uuid())
+
+  userId String
+  examId String
+
+  status  ExamSessionStatus @default(IN_PROGRESS)
+  answers Json
+
+  createdAt   DateTime  @default(now())
+  submittedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+  exam Exam @relation(fields: [examId], references: [id])
+
+  @@index([userId])
+  @@index([examId])
 }
