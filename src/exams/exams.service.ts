@@ -354,4 +354,75 @@ export class ExamsService {
 
     return newSession;
   }
+
+  async getExamSessionDetail(
+    userId: string,
+    examId: string,
+    sessionId: string,
+  ) {
+    // 1) Load session
+    const session = await this.prisma.examSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        exam: true,
+        answers: true,
+      },
+    });
+    // 2) Validate ownership + examId
+    // Return 404 if session not found OR doesn't belong to user
+    // (Use 404 to prevent leaking info about other users' sessions)
+    if (!session || session.userId !== userId || session.examId !== examId) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // 3) ensureUserCanTakeExam
+    await this.ensureUserCanTakeExam(userId, examId);
+
+    // 4) Load exam questions + options
+    const questions = await this.prisma.examQuestion.findMany({
+      where: {
+        examId: session.examId,
+      },
+      orderBy: {
+        orderNo: 'asc',
+      },
+      include: {
+        question: {
+          include: { options: { orderBy: { orderNo: 'asc' } } },
+        },
+      },
+    });
+
+    // 5) Map answers to questions
+    const answersByQuestionId = new Map(
+      session.answers.map((answer) => [answer.questionId, answer]),
+    );
+
+    const mappedQuestions = questions.map((examQuestion) => {
+      const answer = answersByQuestionId.get(examQuestion.questionId);
+
+      return {
+        questionId: examQuestion.questionId,
+        order: examQuestion.orderNo,
+        contentHtml: examQuestion.question.contentHtml,
+        options: examQuestion.question.options.map((option) => ({
+          id: option.id,
+          contentHtml: option.contentHtml,
+        })),
+        selectedOptionId: answer?.selectedOptionId ?? null,
+        answeredAt: answer?.answeredAt ?? null,
+      };
+    });
+    // 6) Return response
+    return {
+      sessionId,
+      examId,
+      status: session.status,
+      startTime: session.startTime,
+      timeLimit: session.timeLimit,
+      createdAt: session.createdAt,
+      submittedAt: session.submittedAt,
+      questions: mappedQuestions,
+    };
+  }
 }
