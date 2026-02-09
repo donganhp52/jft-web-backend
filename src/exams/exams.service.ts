@@ -382,6 +382,10 @@ export class ExamsService {
     const questions = await this.prisma.examQuestion.findMany({
       where: {
         examId: session.examId,
+        question: {
+          status: 'ACTIVE',
+          deletedAt: null,
+        },
       },
       orderBy: {
         orderNo: 'asc',

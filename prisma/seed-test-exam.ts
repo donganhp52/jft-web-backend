@@ -13,7 +13,7 @@ async function main() {
 
   // 1. Get existing test user
   const testUser = await prisma.user.findUnique({
-    where: { email: 'testuser@example.com' },
+    where: { email: 'testuser2@example.com' },
   });
 
   if (!testUser) {
